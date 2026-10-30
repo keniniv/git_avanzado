@@ -87,6 +87,7 @@
       this.mirror = options.mirror ?? true;
       this.modelType = options.modelType ?? "lite";
       this.debug = options.debug ?? false;
+      this.runtime = options.runtime ?? null;
       this.style = Object.assign({}, DEFAULT_STYLE, options.style);
 
       this.status = "idle";
@@ -140,7 +141,14 @@
       const stream = await this._withTimeout(
         navigator.mediaDevices.getUserMedia({
           audio: false,
-          video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+          video: {
+            facingMode: "user",
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+            // The model never needs more than ~30fps, and decoding 60fps frames
+            // steals main-thread time from the render loop.
+            frameRate: { ideal: 30 },
+          },
         }),
         15000,
         "No se pudo abrir la cámara: el navegador no respondió. Revisá el permiso de cámara " +
@@ -244,7 +252,14 @@
     }
 
     async _startModel() {
-      this._model = await ml5.handPose({ maxHands: this.maxHands, modelType: this.modelType });
+      const modelOptions = { maxHands: this.maxHands, modelType: this.modelType };
+      // "mediapipe" uses the MediaPipe Hands solution instead of tfjs; it is often
+      // faster. Left unset (ml5 default = "tfjs") unless the caller opts in.
+      if (this.runtime) modelOptions.runtime = this.runtime;
+
+      this._model = await ml5.handPose(modelOptions);
+      this._debug("modelo listo: modelType=" + this.modelType + ", runtime=" + (this.runtime || "default"));
+
       if (this._detecting) return;
       this._detecting = true;
       this._model.detectStart(this._video, (results) => this._onResults(results));

@@ -14,6 +14,7 @@ const SketchConfig = {
     maxHands: 2,
     mirror: true, // mirrored = "selfie" view, data and screen agree
     modelType: "lite", // "lite" for FPS, "full" for accuracy
+    runtime: null, // try "mediapipe" for another speed/accuracy point
     debug: false, // set true to log camera size, readyState and hands/second
   },
 };
@@ -22,6 +23,9 @@ let handpose;
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
+  // Must come AFTER createCanvas in p5 2.x, otherwise the backing store keeps the
+  // screen's devicePixelRatio and every frame clears/paints 4x more pixels.
+  pixelDensity(1);
 
   handpose = new Handpose.HandPoseTracker(SketchConfig.handpose);
   handpose.start(); // async: the canvas renders while the model loads
